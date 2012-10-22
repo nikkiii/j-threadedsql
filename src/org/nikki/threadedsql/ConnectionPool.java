@@ -3,6 +3,7 @@ package org.nikki.threadedsql;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,7 @@ public class ConnectionPool<T extends DatabaseConnection> {
 	/**
 	 * A thread-safe linked queue which contains our connections
 	 */
-	private ConcurrentLinkedQueue<DatabaseConnection> pool = new ConcurrentLinkedQueue<DatabaseConnection>();
+	private Queue<DatabaseConnection> pool = new ConcurrentLinkedQueue<DatabaseConnection>();
 
 	/**
 	 * Create a new database pool
@@ -63,18 +64,16 @@ public class ConnectionPool<T extends DatabaseConnection> {
 		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new Runnable() {
 			public void run() {
 				//Ping!
-				synchronized(pool) {
-					List<DatabaseConnection> remove = new LinkedList<DatabaseConnection>();
-					for(DatabaseConnection connection : pool) {
-						try {
-							connection.getConnection().createStatement().execute("/* ping */ SELECT 1");
-						} catch (SQLException e) {
-							remove.add(connection);
-						}
+				List<DatabaseConnection> remove = new LinkedList<DatabaseConnection>();
+				for(DatabaseConnection connection : pool) {
+					try {
+						connection.getConnection().createStatement().execute("/* ping */ SELECT 1");
+					} catch (SQLException e) {
+						remove.add(connection);
 					}
-					for(DatabaseConnection r : remove) {
-						pool.remove(r);
-					}
+				}
+				for(DatabaseConnection r : remove) {
+					pool.remove(r);
 				}
 			}
 		}, 0, 30000, TimeUnit.MILLISECONDS);
@@ -87,30 +86,28 @@ public class ConnectionPool<T extends DatabaseConnection> {
 	 */
 	@SuppressWarnings("unchecked")
 	public DatabaseConnection nextFree() {
-		synchronized(pool) {
-			// First check if a connection is free
-			DatabaseConnection connection = pool.poll();
-			if (connection != null) {
-				if (!connection.isFresh()) {
-					// DISCARD, since the connection is bad
-					currentConnections--;
-					return nextFree();
-				}
-				return connection;
-			}
-			if (currentConnections >= maxConnections) {
-				return null;
-			}
-			// If we don't find a connection, create a new one!
-			connection = configuration.newConnection();
-			connection.setPool((ConnectionPool<DatabaseConnection>) this);
-			if (!connection.connect()) {
-				throw new RuntimeException("Connection was unable to connect!");
-			} else {
-				currentConnections++;
+		// First check if a connection is free
+		DatabaseConnection connection = pool.poll();
+		if (connection != null) {
+			if (!connection.isFresh()) {
+				// DISCARD, since the connection is bad
+				currentConnections--;
+				return nextFree();
 			}
 			return connection;
 		}
+		if (currentConnections >= maxConnections) {
+			return null;
+		}
+		// If we don't find a connection, create a new one!
+		connection = configuration.newConnection();
+		connection.setPool((ConnectionPool<DatabaseConnection>) this);
+		if (!connection.connect()) {
+			throw new RuntimeException("Connection was unable to connect!");
+		} else {
+			currentConnections++;
+		}
+		return connection;
 	}
 
 	/**
