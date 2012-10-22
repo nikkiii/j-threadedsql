@@ -1,6 +1,7 @@
 package org.nikki.threadedsql;
 
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -64,16 +65,13 @@ public class ConnectionPool<T extends DatabaseConnection> {
 		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new Runnable() {
 			public void run() {
 				//Ping!
-				List<DatabaseConnection> remove = new LinkedList<DatabaseConnection>();
-				for(DatabaseConnection connection : pool) {
+				for(Iterator<DatabaseConnection> it$ = pool.iterator(); it$.hasNext();) {
+					DatabaseConnection connection = it$.next();
 					try {
 						connection.getConnection().createStatement().execute("/* ping */ SELECT 1");
 					} catch (SQLException e) {
-						remove.add(connection);
+						it$.remove();
 					}
-				}
-				for(DatabaseConnection r : remove) {
-					pool.remove(r);
 				}
 			}
 		}, 0, 30000, TimeUnit.MILLISECONDS);
