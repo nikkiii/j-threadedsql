@@ -75,7 +75,7 @@ public class ThreadedSQL {
 			@Override
 			public void run() {
 				try {
-					_query(statement, callback);
+					query(statement, callback);
 				} catch(SQLException e) {
 					callback.queryError(e);
 				}
@@ -85,7 +85,7 @@ public class ThreadedSQL {
 	
 	/**
 	 * Executed a standard sql query.
-	 * @param statement
+	 * @param query
 	 * 			The statement to execute
 	 * @param callback
 	 * 			The callback to inform when the query is successful/fails
@@ -95,7 +95,7 @@ public class ThreadedSQL {
 			@Override
 			public void run() {
 				try {
-					_query(query, callback);
+					query(query, callback);
 				} catch(SQLException e) {
 					callback.queryError(e);
 				}
@@ -134,7 +134,7 @@ public class ThreadedSQL {
 	 * @throws SQLException
 	 * 			If an error occurs while executing, this is passed to callback.queryError(SQLException e)
 	 */
-	private void _query(PreparedStatement statement, ThreadedSQLCallback callback) throws SQLException {		
+	private void query(PreparedStatement statement, ThreadedSQLCallback callback) throws SQLException {		
 		statement.execute();
 		
 		//Prepared statements don't hold a connection, they simply use it
@@ -157,7 +157,7 @@ public class ThreadedSQL {
 	 * @throws SQLException
 	 * 			If an error occurs while executing, this is passed to callback.queryError(SQLException e)
 	 */
-	private void _query(String query, ThreadedSQLCallback callback) throws SQLException {
+	private void query(String query, ThreadedSQLCallback callback) throws SQLException {
 		DatabaseConnection conn = pool.nextFree();
 		
 		Connection c = conn.getConnection();
